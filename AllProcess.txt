@@ -1,0 +1,7 @@
+# Data 파일 읽어옴
+
+# 임베딩
+
+# 모델
+
+# 결과 binary classification
