@@ -1,26 +1,76 @@
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Conv1D, MaxPooling1D, Embedding
-
-from keras.utils import np_utils
-import numpy as np
+import flag
+from keras import backend as K
 
 
 class CNNModel:
 
-    def __init__(self, input_data, answer_data):
-        self._input_data = input_data
-        self._answer_data = answer_data
+    def __init__(self, word_index):
+        self._word_index = word_index
 
     def build_model(self):
         self.model = Sequential()
         # Embedding model
-        self.model.add(Embedding(input_dim=None, output_dim=50))
-        self.model.add(Dropout(0.2))
-        self.model.add(Conv1D(kernel_size=64, strides=5, filters=10, activation='relu', use_bias=True))
-        self.model.add(MaxPooling1D(pool_size=4))
+        self.model.add(Embedding(len(self._word_index), flag.embedding_dim, input_length=flag.sequence_length, name="embedding"))
+        self.model.add(Dropout(0.7))
+        self.model.add(Conv1D(kernel_size=5, strides=1, filters=10, activation='relu', use_bias=True))
+        self.model.add(MaxPooling1D(pool_size=2))
+        self.model.add(Dense(100, activation='relu'))
+        self.model.add(Flatten())
         self.model.add(Dense(1, activation='sigmoid'))
+        self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', f1score])
         # or sgd
         # sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
-        self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-
         return self.model
+
+
+def recall(y_target, y_pred):
+    # clip(t, clip_value_min, clip_value_max) : clip_value_min~clip_value_max 이외 가장자리를 깎아 낸다
+    # round : 반올림한다
+    y_target_yn = K.round(K.clip(y_target, 0, 1))  # 실제값을 0(Negative) 또는 1(Positive)로 설정한다
+    y_pred_yn = K.round(K.clip(y_pred, 0, 1))  # 예측값을 0(Negative) 또는 1(Positive)로 설정한다
+
+    # True Positive는 실제 값과 예측 값이 모두 1(Positive)인 경우이다
+    count_true_positive = K.sum(y_target_yn * y_pred_yn)
+
+    # (True Positive + False Negative) = 실제 값이 1(Positive) 전체
+    count_true_positive_false_negative = K.sum(y_target_yn)
+
+    # Recall =  (True Positive) / (True Positive + False Negative)
+    # K.epsilon()는 'divide by zero error' 예방차원에서 작은 수를 더한다
+    recall = count_true_positive / (count_true_positive_false_negative + K.epsilon())
+
+    # return a single tensor value
+    return recall
+
+
+def precision(y_target, y_pred):
+    # clip(t, clip_value_min, clip_value_max) : clip_value_min~clip_value_max 이외 가장자리를 깎아 낸다
+    # round : 반올림한다
+    y_pred_yn = K.round(K.clip(y_pred, 0, 1))  # 예측값을 0(Negative) 또는 1(Positive)로 설정한다
+    y_target_yn = K.round(K.clip(y_target, 0, 1))  # 실제값을 0(Negative) 또는 1(Positive)로 설정한다
+
+    # True Positive는 실제 값과 예측 값이 모두 1(Positive)인 경우이다
+    count_true_positive = K.sum(y_target_yn * y_pred_yn)
+
+    # (True Positive + False Positive) = 예측 값이 1(Positive) 전체
+    count_true_positive_false_positive = K.sum(y_pred_yn)
+
+    # Precision = (True Positive) / (True Positive + False Positive)
+    # K.epsilon()는 'divide by zero error' 예방차원에서 작은 수를 더한다
+    precision = count_true_positive / (count_true_positive_false_positive + K.epsilon())
+
+    # return a single tensor value
+    return precision
+
+
+def f1score(y_target, y_pred):
+    _recall = recall(y_target, y_pred)
+    _precision = precision(y_target, y_pred)
+    # K.epsilon()는 'divide by zero error' 예방차원에서 작은 수를 더한다
+    _f1score = (2 * _recall * _precision) / (_recall + _precision + K.epsilon())
+
+    # return a single tensor value
+    return _f1score
+
