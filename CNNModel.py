@@ -2,7 +2,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Conv1D, MaxPooling1D, Embedding
 import flag
 from keras import backend as K
-
+from keras import optimizers
 
 class CNNModel:
 
@@ -12,16 +12,14 @@ class CNNModel:
     def build_model(self):
         self.model = Sequential()
         # Embedding model
-        self.model.add(Embedding(len(self._word_index), flag.embedding_dim, input_length=flag.sequence_length, name="embedding"))
-        self.model.add(Dropout(0.7))
+        self.model.add(Embedding(len(self._word_index), output_dim=flag.embedding_dim, input_length=flag.sequence_length))
         self.model.add(Conv1D(kernel_size=5, strides=1, filters=10, activation='relu', use_bias=True))
+        self.model.add(Dropout(0.3))
         self.model.add(MaxPooling1D(pool_size=2))
-        self.model.add(Dense(100, activation='relu'))
         self.model.add(Flatten())
         self.model.add(Dense(1, activation='sigmoid'))
         self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', f1score])
-        # or sgd
-        # sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
+        print(self.model.summary())
         return self.model
 
 
@@ -73,4 +71,3 @@ def f1score(y_target, y_pred):
 
     # return a single tensor value
     return _f1score
-
